@@ -65,7 +65,7 @@ export default function OrganizationsPage() {
             });
             if (!res.ok) throw new Error("Failed to fetch organizations");
             const data = await res.json();
-            setOrganizations(data.organizations || []);
+            setOrganizations(data.data || data.organizations || []);
         } catch (err) {
             setError(err instanceof Error ? err.message : "An error occurred");
         } finally {

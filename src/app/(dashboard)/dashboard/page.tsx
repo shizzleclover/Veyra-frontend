@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import {
     Building2,
     Trophy,
@@ -10,6 +12,7 @@ import {
     Plus,
     ArrowRight,
     TrendingUp,
+    Loader2,
 } from "lucide-react";
 
 const containerVariants = {
@@ -34,33 +37,87 @@ const itemVariants = {
     },
 };
 
+interface DashboardStats {
+    communityCount: number;
+    trackCount: number;
+    maxStreak: number;
+    submissionsThisWeek: number;
+    totalTracksThisWeek: number;
+}
+
 export default function DashboardPage() {
-    // TODO: Fetch real data from API
-    const stats = [
+    const { getToken } = useAuth();
+    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            try {
+                const token = await getToken();
+                const headers = { Authorization: `Bearer ${token}` };
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+                // Fetch organizations count
+                const orgsRes = await fetch(`${apiUrl}/api/organizations`, { headers });
+                const orgsData = orgsRes.ok ? await orgsRes.json() : { organizations: [] };
+
+                // Fetch my tracks
+                const tracksRes = await fetch(`${apiUrl}/api/tracks/my-tracks`, { headers });
+                const tracksData = tracksRes.ok ? await tracksRes.json() : { tracks: [] };
+
+                // Calculate max streak from tracks
+                let maxStreak = 0;
+                const tracks = tracksData.tracks || [];
+
+                setStats({
+                    communityCount: orgsData.organizations?.length || 0,
+                    trackCount: tracks.length,
+                    maxStreak: maxStreak,
+                    submissionsThisWeek: 0, // Can enhance later
+                    totalTracksThisWeek: tracks.length,
+                });
+            } catch (err) {
+                console.error("Failed to fetch dashboard data:", err);
+                setStats({
+                    communityCount: 0,
+                    trackCount: 0,
+                    maxStreak: 0,
+                    submissionsThisWeek: 0,
+                    totalTracksThisWeek: 0,
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDashboardData();
+    }, []);
+
+    const statCards = [
         {
             label: "Communities",
-            value: "3",
+            value: loading ? "..." : stats?.communityCount.toString() || "0",
             icon: Building2,
             color: "var(--primary)",
             href: "/orgs",
         },
         {
             label: "Active Tracks",
-            value: "5",
+            value: loading ? "..." : stats?.trackCount.toString() || "0",
             icon: Trophy,
             color: "var(--secondary)",
-            href: "/orgs",
+            href: "/leaderboard",
         },
         {
-            label: "Current Streak",
-            value: "7",
+            label: "Best Streak",
+            value: loading ? "..." : stats?.maxStreak.toString() || "0",
             icon: Flame,
             color: "var(--accent)",
-            suffix: "weeks",
+            suffix: "days",
         },
         {
             label: "This Week",
-            value: "2/5",
+            value: loading ? "..." : `${stats?.submissionsThisWeek || 0}/${stats?.totalTracksThisWeek || 0}`,
             icon: FileText,
             color: "var(--chart-4)",
             suffix: "submitted",
@@ -77,7 +134,7 @@ export default function DashboardPage() {
         {
             label: "View Leaderboards",
             icon: Trophy,
-            href: "/orgs",
+            href: "/leaderboard",
             color: "var(--secondary)",
         },
         {
@@ -110,7 +167,7 @@ export default function DashboardPage() {
                 variants={containerVariants}
                 className="grid grid-cols-2 lg:grid-cols-4 gap-4"
             >
-                {stats.map((stat, i) => (
+                {statCards.map((stat, i) => (
                     <motion.div
                         key={stat.label}
                         variants={itemVariants}

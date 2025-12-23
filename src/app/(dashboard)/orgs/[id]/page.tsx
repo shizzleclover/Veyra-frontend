@@ -94,13 +94,13 @@ export default function OrganizationDetailPage() {
             const orgRes = await fetch(`${apiUrl}/api/organizations/${orgId}`, { headers });
             if (!orgRes.ok) throw new Error("Failed to fetch organization");
             const orgData = await orgRes.json();
-            setOrg(orgData.organization);
+            setOrg(orgData.data || orgData.organization);
 
             // Fetch tracks
-            const tracksRes = await fetch(`${apiUrl}/api/organizations/${orgId}/tracks`, { headers });
+            const tracksRes = await fetch(`${apiUrl}/api/tracks/org/${orgId}`, { headers });
             if (tracksRes.ok) {
                 const tracksData = await tracksRes.json();
-                setTracks(tracksData.tracks || []);
+                setTracks(tracksData.data || []);
             }
 
             // Fetch members
@@ -127,7 +127,7 @@ export default function OrganizationDetailPage() {
         setCreating(true);
         try {
             const token = await getToken();
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${orgId}/tracks`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tracks/org/${orgId}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -214,6 +214,24 @@ export default function OrganizationDetailPage() {
                         </div>
                     </div>
                 </div>
+            </motion.div>
+
+            {/* Quick Links */}
+            <motion.div variants={itemVariants} className="flex flex-wrap gap-2">
+                <Link
+                    href={`/orgs/${orgId}/leaderboard`}
+                    className="btn-brutalist px-4 py-2 bg-[var(--secondary)] font-bold flex items-center gap-2"
+                >
+                    <Trophy className="w-4 h-4" />
+                    Community Leaderboard
+                </Link>
+                <Link
+                    href={`/orgs/${orgId}/admin`}
+                    className="btn-brutalist px-4 py-2 bg-[var(--muted)] font-bold flex items-center gap-2"
+                >
+                    <Settings className="w-4 h-4" />
+                    Admin Panel
+                </Link>
             </motion.div>
 
             {error && (

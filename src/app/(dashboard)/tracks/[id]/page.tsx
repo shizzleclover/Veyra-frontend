@@ -96,20 +96,20 @@ export default function TrackDetailPage() {
             const trackRes = await fetch(`${apiUrl}/api/tracks/${trackId}`, { headers });
             if (!trackRes.ok) throw new Error("Failed to fetch track");
             const trackData = await trackRes.json();
-            setTrack(trackData.track);
+            setTrack(trackData.data || trackData.track);
 
-            // Fetch leaderboard
-            const leaderboardRes = await fetch(`${apiUrl}/api/tracks/${trackId}/leaderboard`, { headers });
+            // Fetch leaderboard - correct route is /api/leaderboard/track/:trackId
+            const leaderboardRes = await fetch(`${apiUrl}/api/leaderboard/track/${trackId}`, { headers });
             if (leaderboardRes.ok) {
                 const leaderboardData = await leaderboardRes.json();
-                setLeaderboard(leaderboardData.leaderboard || []);
+                setLeaderboard(leaderboardData.data?.leaderboard || leaderboardData.leaderboard || []);
             }
 
-            // Fetch submissions
-            const submissionsRes = await fetch(`${apiUrl}/api/tracks/${trackId}/submissions`, { headers });
+            // Fetch submissions - correct route is /api/submissions/track/:trackId
+            const submissionsRes = await fetch(`${apiUrl}/api/submissions/track/${trackId}`, { headers });
             if (submissionsRes.ok) {
                 const submissionsData = await submissionsRes.json();
-                setSubmissions(submissionsData.submissions || []);
+                setSubmissions(submissionsData.data || submissionsData.submissions || []);
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : "An error occurred");
