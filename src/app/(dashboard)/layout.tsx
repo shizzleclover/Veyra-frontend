@@ -9,6 +9,8 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
     LayoutDashboard,
     Building2,
+    User,
+    Trophy,
     Menu,
     X,
 } from "lucide-react";
@@ -16,7 +18,9 @@ import { useState } from "react";
 
 const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/orgs", label: "Organizations", icon: Building2 },
+    { href: "/orgs", label: "Community", icon: Building2 },
+    { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
+    { href: "/profile", label: "Profile", icon: User },
 ];
 
 export default function DashboardLayout({

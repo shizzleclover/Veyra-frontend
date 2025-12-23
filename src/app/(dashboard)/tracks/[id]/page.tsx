@@ -17,6 +17,9 @@ import {
     TrendingUp,
     FileText,
     Plus,
+    Shield,
+    FileQuestion,
+    BarChart2,
 } from "lucide-react";
 
 interface Track {
@@ -166,7 +169,7 @@ export default function TrackDetailPage() {
                     className="inline-flex items-center gap-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
                 >
                     <ArrowLeft className="w-4 h-4" />
-                    Back to {track.organization?.name || "Organization"}
+                    Back to {track.organization?.name || "Community"}
                 </Link>
             </motion.div>
 
@@ -198,6 +201,31 @@ export default function TrackDetailPage() {
                         </Link>
                     </div>
                 </div>
+            </motion.div>
+
+            {/* Quick Links */}
+            <motion.div variants={itemVariants} className="flex flex-wrap gap-2">
+                <Link
+                    href={`/tracks/${trackId}/quizzes`}
+                    className="btn-brutalist px-4 py-2 bg-[var(--chart-5)] text-white font-bold flex items-center gap-2"
+                >
+                    <FileQuestion className="w-4 h-4" />
+                    Quizzes
+                </Link>
+                <Link
+                    href={`/tracks/${trackId}/leaderboard`}
+                    className="btn-brutalist px-4 py-2 bg-[var(--secondary)] font-bold flex items-center gap-2"
+                >
+                    <BarChart2 className="w-4 h-4" />
+                    Full Leaderboard
+                </Link>
+                <Link
+                    href={`/tracks/${trackId}/admin`}
+                    className="btn-brutalist px-4 py-2 bg-[var(--muted)] font-bold flex items-center gap-2"
+                >
+                    <Shield className="w-4 h-4" />
+                    Admin Panel
+                </Link>
             </motion.div>
 
             {error && (
@@ -301,8 +329,8 @@ export default function TrackDetailPage() {
                                     </div>
                                 </div>
                                 <span className={`px-3 py-1 text-xs font-bold border-2 border-[var(--border)] ${submission.status === "approved" ? "bg-green-100 text-green-800" :
-                                        submission.status === "rejected" ? "bg-red-100 text-red-800" :
-                                            "bg-yellow-100 text-yellow-800"
+                                    submission.status === "rejected" ? "bg-red-100 text-red-800" :
+                                        "bg-yellow-100 text-yellow-800"
                                     }`}>
                                     {submission.status}
                                 </span>

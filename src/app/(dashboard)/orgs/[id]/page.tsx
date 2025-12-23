@@ -163,7 +163,7 @@ export default function OrganizationDetailPage() {
     if (!org) {
         return (
             <div className="text-center py-12">
-                <h2 className="text-2xl font-bold mb-4">Organization not found</h2>
+                <h2 className="text-2xl font-bold mb-4">Community not found</h2>
                 <Link href="/orgs" className="text-[var(--primary)] hover:underline">
                     Back to organizations
                 </Link>
@@ -185,7 +185,7 @@ export default function OrganizationDetailPage() {
                     className="inline-flex items-center gap-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
                 >
                     <ArrowLeft className="w-4 h-4" />
-                    Back to Organizations
+                    Back to Community
                 </Link>
             </motion.div>
 
@@ -328,7 +328,7 @@ export default function OrganizationDetailPage() {
                                         </div>
                                     </div>
                                     <span className={`px-3 py-1 text-xs font-bold border-2 border-[var(--border)] ${member.role === "owner" ? "bg-[var(--primary)] text-white" :
-                                            member.role === "admin" ? "bg-[var(--secondary)]" : "bg-[var(--muted)]"
+                                        member.role === "admin" ? "bg-[var(--secondary)]" : "bg-[var(--muted)]"
                                         }`}>
                                         {member.role}
                                     </span>

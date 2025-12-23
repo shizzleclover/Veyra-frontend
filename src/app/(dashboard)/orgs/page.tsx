@@ -127,7 +127,7 @@ export default function OrganizationsPage() {
             {/* Header */}
             <motion.div variants={itemVariants} className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl lg:text-4xl font-black mb-2">Organizations</h1>
+                    <h1 className="text-3xl lg:text-4xl font-black mb-2">Community</h1>
                     <p className="text-[var(--muted-foreground)]">
                         Manage your organizations and tracks
                     </p>
@@ -137,7 +137,7 @@ export default function OrganizationsPage() {
                     className="btn-brutalist px-4 py-3 bg-[var(--primary)] text-[var(--primary-foreground)] font-bold flex items-center gap-2"
                 >
                     <Plus className="w-5 h-5" />
-                    <span className="hidden sm:inline">New Organization</span>
+                    <span className="hidden sm:inline">New Community</span>
                 </button>
             </motion.div>
 
@@ -163,7 +163,7 @@ export default function OrganizationsPage() {
                         className="btn-brutalist px-6 py-3 bg-[var(--primary)] text-[var(--primary-foreground)] font-bold inline-flex items-center gap-2"
                     >
                         <Plus className="w-5 h-5" />
-                        Create Organization
+                        Create Community
                     </button>
                 </motion.div>
             ) : (
@@ -212,7 +212,7 @@ export default function OrganizationsPage() {
                         animate={{ opacity: 1, scale: 1 }}
                         className="card-brutalist p-8 w-full max-w-md"
                     >
-                        <h2 className="text-2xl font-bold mb-6">Create Organization</h2>
+                        <h2 className="text-2xl font-bold mb-6">Create Community</h2>
                         <form onSubmit={handleCreateOrg} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-semibold mb-2">Name</label>
@@ -221,7 +221,7 @@ export default function OrganizationsPage() {
                                     value={newOrgName}
                                     onChange={(e) => setNewOrgName(e.target.value)}
                                     className="input-brutalist w-full px-4 py-3"
-                                    placeholder="My Organization"
+                                    placeholder="My Community"
                                     required
                                 />
                             </div>

@@ -38,7 +38,7 @@ export default function DashboardPage() {
     // TODO: Fetch real data from API
     const stats = [
         {
-            label: "Organizations",
+            label: "Communities",
             value: "3",
             icon: Building2,
             color: "var(--primary)",
@@ -69,7 +69,7 @@ export default function DashboardPage() {
 
     const quickActions = [
         {
-            label: "Create Organization",
+            label: "Create Community",
             icon: Building2,
             href: "/orgs",
             color: "var(--primary)",

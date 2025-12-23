@@ -195,7 +195,7 @@ export default function LandingPage() {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-          >
+          > 
             <h2 className="text-4xl sm:text-5xl font-black mb-4 font-display">
               Why <span className="text-[var(--primary)]">Veyra?</span>
             </h2>
