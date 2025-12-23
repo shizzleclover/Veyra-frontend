@@ -34,14 +34,14 @@ const features = [
   {
     icon: Users,
     title: "Team Tracks",
-    description: "Create organizations and tracks. Invite your team.",
+    description: "Create organizations and tracks. Invite your team. 67",
     color: "var(--chart-4)",
     size: "small",
   },
   {
     icon: Sparkles,
     title: "Weekly Quizzes",
-    description: "Test your knowledge with essay questions.",
+    description: "Test your knowledge with essay questions. Barbequeue bacon burger",
     color: "var(--chart-5)",
     size: "medium",
   },
