@@ -87,7 +87,7 @@ export default function SubmitProgressPage() {
                 formData.append("type", "image");
             }
 
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tracks/${trackId}/submissions`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/submissions/track/${trackId}`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${token}`,

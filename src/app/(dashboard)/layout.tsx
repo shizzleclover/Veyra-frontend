@@ -14,7 +14,9 @@ import {
     Menu,
     X,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 
 const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -29,7 +31,48 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const pathname = usePathname();
+    const router = useRouter();
+    const { getToken, isLoaded, userId } = useAuth();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [checking, setChecking] = useState(true);
+
+    useEffect(() => {
+        const checkMembership = async () => {
+            if (!isLoaded || !userId) return;
+
+            try {
+                const token = await getToken();
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data.data) && data.data.length === 0) {
+                        router.push("/onboarding");
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.error("Auth check failed", err);
+            } finally {
+                setChecking(false);
+            }
+        };
+
+        checkMembership();
+    }, [isLoaded, userId, getToken, router]);
+
+    if (!isLoaded || checking) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+                    <p className="font-bold text-[var(--muted-foreground)]">Loading...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[var(--background)]">

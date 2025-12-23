@@ -20,6 +20,7 @@ import {
     Shield,
     FileQuestion,
     BarChart2,
+    Settings,
 } from "lucide-react";
 
 interface Track {
@@ -225,6 +226,13 @@ export default function TrackDetailPage() {
                 >
                     <Shield className="w-4 h-4" />
                     Admin Panel
+                </Link>
+                <Link
+                    href={`/tracks/${trackId}/settings`}
+                    className="btn-brutalist px-4 py-2 bg-[var(--muted)] font-bold flex items-center gap-2"
+                >
+                    <Settings className="w-4 h-4" />
+                    Settings
                 </Link>
             </motion.div>
 

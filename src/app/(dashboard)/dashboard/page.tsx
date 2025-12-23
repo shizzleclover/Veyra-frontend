@@ -14,6 +14,7 @@ import {
     TrendingUp,
     Loader2,
 } from "lucide-react";
+import { CheckInButton } from "@/components/CheckInButton";
 
 const containerVariants = {
     hidden: { opacity: 0 },
@@ -43,12 +44,28 @@ interface DashboardStats {
     maxStreak: number;
     submissionsThisWeek: number;
     totalTracksThisWeek: number;
+    tracks: any[];
 }
 
 export default function DashboardPage() {
     const { getToken } = useAuth();
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
+
+    const refreshTrack = (trackId: string) => {
+        setStats(prev => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                tracks: prev.tracks.map(t => {
+                    if (t.id === trackId) {
+                        return { ...t, hasCheckedInToday: true, currentStreak: (t.currentStreak || 0) + 1 };
+                    }
+                    return t;
+                })
+            };
+        });
+    };
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -68,13 +85,17 @@ export default function DashboardPage() {
                 // Calculate max streak from tracks
                 let maxStreak = 0;
                 const tracks = tracksData.tracks || [];
+                tracks.forEach((t: any) => {
+                    if (t.currentStreak > maxStreak) maxStreak = t.currentStreak;
+                });
 
                 setStats({
                     communityCount: orgsData.organizations?.length || 0,
                     trackCount: tracks.length,
                     maxStreak: maxStreak,
-                    submissionsThisWeek: 0, // Can enhance later
+                    submissionsThisWeek: 0,
                     totalTracksThisWeek: tracks.length,
+                    tracks: tracks,
                 });
             } catch (err) {
                 console.error("Failed to fetch dashboard data:", err);
@@ -84,6 +105,7 @@ export default function DashboardPage() {
                     maxStreak: 0,
                     submissionsThisWeek: 0,
                     totalTracksThisWeek: 0,
+                    tracks: [],
                 });
             } finally {
                 setLoading(false);
@@ -167,7 +189,7 @@ export default function DashboardPage() {
                 variants={containerVariants}
                 className="grid grid-cols-2 lg:grid-cols-4 gap-4"
             >
-                {statCards.map((stat, i) => (
+                {statCards.map((stat) => (
                     <motion.div
                         key={stat.label}
                         variants={itemVariants}
@@ -196,28 +218,41 @@ export default function DashboardPage() {
                 ))}
             </motion.div>
 
-            {/* Streak Banner */}
-            <motion.div
-                variants={itemVariants}
-                className="card-brutalist p-6 relative overflow-hidden"
-            >
-                <div className="absolute inset-0 animate-lava opacity-10" />
-                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 flex items-center justify-center bg-[var(--primary)] border-3 border-[var(--border)]">
-                            <Flame className="w-8 h-8 text-white animate-streak-flame" />
-                        </div>
-                        <div>
-                            <div className="text-2xl font-black">🔥 7 Week Streak!</div>
-                            <div className="text-[var(--muted-foreground)]">
-                                You&apos;re on fire! Keep the momentum going.
+            {/* Active Tracks List */}
+            <motion.div variants={itemVariants}>
+                <h2 className="text-xl font-bold mb-4">My Active Tracks</h2>
+                <div className="space-y-4">
+                    {stats?.tracks?.map((track) => (
+                        <div key={track.id} className="card-brutalist p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div className="flex-1">
+                                <h3 className="text-lg font-black">{track.name}</h3>
+                                <p className="text-sm text-[var(--muted-foreground)] mb-1">{track.organizationName}</p>
+                                <div className="flex items-center gap-3 text-sm">
+                                    <span className="flex items-center gap-1 font-bold text-[var(--accent)]">
+                                        <Flame className="w-4 h-4" />
+                                        {track.currentStreak} Day Streak
+                                    </span>
+                                    <span className="text-[var(--muted-foreground)]">•</span>
+                                    <span>{track.memberCount} members</span>
+                                </div>
                             </div>
+                            <CheckInButton
+                                trackId={track.id}
+                                hasCheckedIn={track.hasCheckedInToday}
+                                onCheckIn={() => refreshTrack(track.id)}
+                            />
                         </div>
-                    </div>
-                    <div className="flex items-center gap-2 bg-[var(--secondary)] px-4 py-2 border-3 border-[var(--border)]">
-                        <TrendingUp className="w-5 h-5" />
-                        <span className="font-bold">1.7x Multiplier</span>
-                    </div>
+                    ))}
+                    {loading && (
+                        <div className="text-center py-8">
+                            <Loader2 className="w-8 h-8 animate-spin mx-auto text-[var(--muted-foreground)]" />
+                        </div>
+                    )}
+                    {!loading && stats?.tracks?.length === 0 && (
+                        <div className="card-brutalist p-8 text-center text-[var(--muted-foreground)]">
+                            You haven't joined any tracks yet.
+                        </div>
+                    )}
                 </div>
             </motion.div>
 
@@ -243,24 +278,6 @@ export default function DashboardPage() {
                         </Link>
                     ))}
                 </div>
-            </motion.div>
-
-            {/* Get Started CTA */}
-            <motion.div
-                variants={itemVariants}
-                className="card-brutalist p-8 text-center"
-            >
-                <h2 className="text-2xl font-black mb-4">Ready to submit this week?</h2>
-                <p className="text-[var(--muted-foreground)] mb-6">
-                    Select a track and submit your weekly progress to maintain your streak.
-                </p>
-                <Link
-                    href="/orgs"
-                    className="btn-brutalist inline-flex items-center gap-2 px-6 py-3 bg-[var(--primary)] text-[var(--primary-foreground)] font-bold"
-                >
-                    View Your Tracks
-                    <ArrowRight className="w-5 h-5" />
-                </Link>
             </motion.div>
         </motion.div>
     );

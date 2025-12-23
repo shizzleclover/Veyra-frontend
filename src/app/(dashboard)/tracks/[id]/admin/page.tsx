@@ -84,7 +84,7 @@ export default function TrackAdminPage() {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
             // Fetch pending submissions
-            const subsRes = await fetch(`${apiUrl}/api/tracks/${trackId}/submissions?status=pending`, { headers });
+            const subsRes = await fetch(`${apiUrl}/api/submissions/track/${trackId}/pending`, { headers });
             if (subsRes.ok) {
                 const data = await subsRes.json();
                 setPendingSubmissions(data.submissions || []);

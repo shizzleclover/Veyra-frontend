@@ -232,6 +232,13 @@ export default function OrganizationDetailPage() {
                     <Settings className="w-4 h-4" />
                     Admin Panel
                 </Link>
+                <Link
+                    href={`/orgs/${orgId}/settings`}
+                    className="btn-brutalist px-4 py-2 bg-[var(--muted)] font-bold flex items-center gap-2"
+                >
+                    <Settings className="w-4 h-4" />
+                    Settings
+                </Link>
             </motion.div>
 
             {error && (
