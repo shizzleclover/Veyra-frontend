@@ -12,6 +12,7 @@ import {
     Trophy,
     ArrowRight,
     Loader2,
+    UserPlus,
 } from "lucide-react";
 
 interface Organization {
@@ -53,7 +54,11 @@ export default function OrganizationsPage() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newOrgName, setNewOrgName] = useState("");
     const [newOrgDesc, setNewOrgDesc] = useState("");
+    const [newSudoPassword, setNewSudoPassword] = useState("");
     const [creating, setCreating] = useState(false);
+    const [showJoinModal, setShowJoinModal] = useState(false);
+    const [inviteCode, setInviteCode] = useState("");
+    const [joining, setJoining] = useState(false);
 
     const fetchOrganizations = async () => {
         try {
@@ -93,19 +98,64 @@ export default function OrganizationsPage() {
                 body: JSON.stringify({
                     name: newOrgName,
                     description: newOrgDesc,
+                    sudoPassword: newSudoPassword,
                 }),
             });
 
-            if (!res.ok) throw new Error("Failed to create organization");
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to create organization");
+            }
+
+            const data = await res.json();
+            const newOrg = data.data || data.organization;
+
+            // Immediately add to state for instant UI update
+            if (newOrg) {
+                setOrganizations(prev => [{ ...newOrg, memberCount: 1, trackCount: 0 }, ...prev]);
+            }
 
             setNewOrgName("");
             setNewOrgDesc("");
+            setNewSudoPassword("");
             setShowCreateModal(false);
-            fetchOrganizations();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to create");
         } finally {
             setCreating(false);
+        }
+    };
+
+    const handleJoinOrg = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!inviteCode.trim()) return;
+
+        setJoining(true);
+        setError(null);
+        try {
+            const token = await getToken();
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/join`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ inviteCode: inviteCode.trim() }),
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to join organization");
+            }
+
+            setInviteCode("");
+            setShowJoinModal(false);
+            // Refresh to get the joined org
+            fetchOrganizations();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to join");
+        } finally {
+            setJoining(false);
         }
     };
 
@@ -132,13 +182,22 @@ export default function OrganizationsPage() {
                         Manage your organizations and tracks
                     </p>
                 </div>
-                <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="btn-brutalist px-4 py-3 bg-[var(--primary)] text-[var(--primary-foreground)] font-bold flex items-center gap-2"
-                >
-                    <Plus className="w-5 h-5" />
-                    <span className="hidden sm:inline">New Community</span>
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setShowJoinModal(true)}
+                        className="btn-brutalist px-4 py-3 bg-[var(--secondary)] font-bold flex items-center gap-2"
+                    >
+                        <UserPlus className="w-5 h-5" />
+                        <span className="hidden sm:inline">Join</span>
+                    </button>
+                    <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="btn-brutalist px-4 py-3 bg-[var(--primary)] text-[var(--primary-foreground)] font-bold flex items-center gap-2"
+                    >
+                        <Plus className="w-5 h-5" />
+                        <span className="hidden sm:inline">Create</span>
+                    </button>
+                </div>
             </motion.div>
 
             {error && (
@@ -230,9 +289,24 @@ export default function OrganizationsPage() {
                                 <textarea
                                     value={newOrgDesc}
                                     onChange={(e) => setNewOrgDesc(e.target.value)}
-                                    className="input-brutalist w-full px-4 py-3 min-h-[100px] resize-none"
+                                    className="input-brutalist w-full px-4 py-3 min-h-[80px] resize-none"
                                     placeholder="What is this organization about?"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold mb-2">Sudo Password *</label>
+                                <input
+                                    type="password"
+                                    value={newSudoPassword}
+                                    onChange={(e) => setNewSudoPassword(e.target.value)}
+                                    className="input-brutalist w-full px-4 py-3"
+                                    placeholder="Min 6 characters"
+                                    required
+                                    minLength={6}
+                                />
+                                <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                                    Required for dangerous actions like deleting the organization
+                                </p>
                             </div>
                             <div className="flex gap-3 pt-4">
                                 <button
@@ -253,6 +327,58 @@ export default function OrganizationsPage() {
                                         <>
                                             <Plus className="w-5 h-5" />
                                             Create
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </motion.div>
+                </div>
+            )}
+
+            {/* Join Modal */}
+            {showJoinModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="card-brutalist p-8 w-full max-w-md"
+                    >
+                        <h2 className="text-2xl font-bold mb-6">Join Community</h2>
+                        <form onSubmit={handleJoinOrg} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold mb-2">Invite Code</label>
+                                <input
+                                    type="text"
+                                    value={inviteCode}
+                                    onChange={(e) => setInviteCode(e.target.value)}
+                                    className="input-brutalist w-full px-4 py-3"
+                                    placeholder="Enter invite code"
+                                    required
+                                />
+                                <p className="text-xs text-[var(--muted-foreground)] mt-1">
+                                    Ask the community owner for the invite code
+                                </p>
+                            </div>
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowJoinModal(false)}
+                                    className="btn-brutalist flex-1 px-4 py-3 bg-[var(--muted)]"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={joining}
+                                    className="btn-brutalist flex-1 px-4 py-3 bg-[var(--primary)] text-[var(--primary-foreground)] font-bold flex items-center justify-center gap-2"
+                                >
+                                    {joining ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <UserPlus className="w-5 h-5" />
+                                            Join
                                         </>
                                     )}
                                 </button>

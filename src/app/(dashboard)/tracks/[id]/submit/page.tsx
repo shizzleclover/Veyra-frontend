@@ -74,30 +74,51 @@ export default function SubmitProgressPage() {
 
         try {
             const token = await getToken();
-            const formData = new FormData();
+
+            // Prepare the submission data
+            let description = "";
+            let proofUrl = "";
+            let proofType: "image" | "file" | "link" = "link";
 
             if (submissionType === "text") {
-                formData.append("content", textContent);
-                formData.append("type", "text");
+                description = textContent;
+                proofUrl = "text-submission"; // Placeholder for text submissions
+                proofType = "link";
             } else if (submissionType === "link") {
-                formData.append("content", linkUrl);
-                formData.append("type", "link");
+                description = textContent || "Link submission";
+                proofUrl = linkUrl;
+                proofType = "link";
             } else if (submissionType === "image" && imageFile) {
-                formData.append("image", imageFile);
-                formData.append("type", "image");
+                // For image, we need to upload first then use the URL
+                // For now, use the preview as proof (in production, upload to cloud storage)
+                description = textContent || "Image submission";
+                proofUrl = imagePreview || "image-submission";
+                proofType = "image";
+            }
+
+            // Validate description length
+            if (description.trim().length < 10) {
+                setError("Description must be at least 10 characters");
+                setSubmitting(false);
+                return;
             }
 
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/submissions/track/${trackId}`, {
                 method: "POST",
                 headers: {
+                    "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: formData,
+                body: JSON.stringify({
+                    description: description.trim(),
+                    proofUrl,
+                    proofType,
+                }),
             });
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.message || "Failed to submit");
+                throw new Error(data.error || data.message || "Failed to submit");
             }
 
             setSuccess(true);
@@ -157,8 +178,8 @@ export default function SubmitProgressPage() {
                         <Upload className="w-7 h-7 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black">Submit Progress</h1>
-                        <p className="text-[var(--muted-foreground)]">Share your weekly progress</p>
+                        <h1 className="text-2xl font-black">Submit Daily Progress</h1>
+                        <p className="text-[var(--muted-foreground)]">Share what you accomplished today (+10 points when approved)</p>
                     </div>
                 </div>
             </motion.div>

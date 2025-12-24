@@ -22,29 +22,35 @@ import {
 
 interface Submission {
     id: string;
-    userId: string;
     user?: {
-        name?: string;
+        id?: string;
         email?: string;
+        displayName?: string;
+        avatarUrl?: string;
     };
-    week: number;
-    type: string;
+    weekStart?: string;
+    weekEnd?: string;
+    description?: string;
+    proofUrl?: string;
+    proofType?: string;
+    // Legacy fields for backwards compatibility
+    week?: number;
+    type?: string;
     content?: string;
     imageUrl?: string;
-    status: string;
+    status?: string;
     createdAt: string;
 }
 
 interface TrackMember {
-    id: string;
     userId: string;
-    user?: {
-        name?: string;
-        email?: string;
-    };
-    role: string;
-    isBanned: boolean;
-    currentStreak: number;
+    displayName?: string;
+    email?: string;
+    avatarUrl?: string;
+    role?: string;
+    joinedAt?: string;
+    isBanned?: boolean;
+    currentStreak?: number;
 }
 
 const containerVariants = {
@@ -87,14 +93,14 @@ export default function TrackAdminPage() {
             const subsRes = await fetch(`${apiUrl}/api/submissions/track/${trackId}/pending`, { headers });
             if (subsRes.ok) {
                 const data = await subsRes.json();
-                setPendingSubmissions(data.submissions || []);
+                setPendingSubmissions(data.data || data.submissions || []);
             }
 
             // Fetch members
             const membersRes = await fetch(`${apiUrl}/api/tracks/${trackId}/members`, { headers });
             if (membersRes.ok) {
                 const data = await membersRes.json();
-                setMembers(data.members || []);
+                setMembers(data.data || data.members || []);
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to load data");
@@ -111,15 +117,20 @@ export default function TrackAdminPage() {
         setProcessing(submissionId);
         try {
             const token = await getToken();
-            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/submissions/${submissionId}/verify`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/submissions/${submissionId}/verify`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ approved }),
+                body: JSON.stringify({ status: approved ? "approved" : "rejected" }),
             });
-            setPendingSubmissions((prev) => prev.filter((s) => s.id !== submissionId));
+            if (res.ok) {
+                setPendingSubmissions((prev) => prev.filter((s) => s.id !== submissionId));
+            } else {
+                const data = await res.json();
+                setError(data.error || "Failed to verify submission");
+            }
         } catch (err) {
             setError("Failed to verify submission");
         } finally {
@@ -230,18 +241,18 @@ export default function TrackAdminPage() {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 flex items-center justify-center bg-[var(--muted)] border-2 border-[var(--border)] font-bold">
-                                            {sub.user?.name?.charAt(0) || "?"}
+                                            {sub.user?.displayName?.charAt(0) || sub.user?.email?.charAt(0) || "?"}
                                         </div>
                                         <div>
-                                            <div className="font-semibold">{sub.user?.name || sub.user?.email || "Unknown"}</div>
+                                            <div className="font-semibold">{sub.user?.displayName || sub.user?.email || "Unknown"}</div>
                                             <div className="text-xs text-[var(--muted-foreground)] flex items-center gap-2">
-                                                <span>Week {sub.week}</span>
+                                                <span>{sub.weekStart ? new Date(sub.weekStart).toLocaleDateString() : 'Pending'}</span>
                                                 <span>•</span>
                                                 <span className="flex items-center gap-1">
-                                                    {sub.type === "image" && <ImageIcon className="w-3 h-3" />}
-                                                    {sub.type === "text" && <FileText className="w-3 h-3" />}
-                                                    {sub.type === "link" && <ExternalLink className="w-3 h-3" />}
-                                                    {sub.type}
+                                                    {sub.proofType === "image" && <ImageIcon className="w-3 h-3" />}
+                                                    {sub.proofType === "file" && <FileText className="w-3 h-3" />}
+                                                    {sub.proofType === "link" && <ExternalLink className="w-3 h-3" />}
+                                                    {sub.proofType || "text"}
                                                 </span>
                                             </div>
                                         </div>
@@ -250,20 +261,23 @@ export default function TrackAdminPage() {
                                         <button
                                             onClick={() => setViewSubmission(sub)}
                                             className="btn-brutalist p-2 bg-[var(--muted)]"
+                                            title="View Details"
                                         >
                                             <Eye className="w-4 h-4" />
                                         </button>
                                         <button
                                             onClick={() => handleVerify(sub.id, true)}
                                             disabled={processing === sub.id}
-                                            className="btn-brutalist p-2 bg-green-500 text-white"
+                                            className="btn-brutalist px-3 py-2 bg-green-500 text-white flex items-center gap-1"
+                                            title="Approve (+10 points)"
                                         >
-                                            {processing === sub.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                                            {processing === sub.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle className="w-4 h-4" /><span className="text-xs font-bold">+10</span></>}
                                         </button>
                                         <button
                                             onClick={() => handleVerify(sub.id, false)}
                                             disabled={processing === sub.id}
                                             className="btn-brutalist p-2 bg-red-500 text-white"
+                                            title="Reject"
                                         >
                                             <XCircle className="w-4 h-4" />
                                         </button>
@@ -278,48 +292,54 @@ export default function TrackAdminPage() {
             {/* Members */}
             {activeTab === "members" && (
                 <motion.div variants={containerVariants} className="card-brutalist divide-y divide-[var(--border)]">
-                    {members.map((member) => (
-                        <div key={member.id} className="p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 flex items-center justify-center border-2 border-[var(--border)] font-bold ${member.isBanned ? "bg-red-100" : "bg-[var(--muted)]"}`}>
-                                    {member.user?.name?.charAt(0) || "?"}
-                                </div>
-                                <div>
-                                    <div className="font-semibold flex items-center gap-2">
-                                        {member.user?.name || member.user?.email || "Unknown"}
-                                        {member.isBanned && (
-                                            <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 border border-red-300">BANNED</span>
-                                        )}
-                                    </div>
-                                    <div className="text-xs text-[var(--muted-foreground)]">
-                                        {member.role} • {member.currentStreak} week streak
-                                    </div>
-                                </div>
-                            </div>
-                            {member.role !== "owner" && (
-                                <button
-                                    onClick={() => handleBan(member.userId, !member.isBanned)}
-                                    disabled={processing === member.userId}
-                                    className={`btn-brutalist px-3 py-2 text-sm font-bold flex items-center gap-1 ${member.isBanned ? "bg-green-500 text-white" : "bg-red-500 text-white"
-                                        }`}
-                                >
-                                    {processing === member.userId ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : member.isBanned ? (
-                                        <>
-                                            <UserCheck className="w-4 h-4" />
-                                            Unban
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Ban className="w-4 h-4" />
-                                            Ban
-                                        </>
-                                    )}
-                                </button>
-                            )}
+                    {members.length === 0 ? (
+                        <div className="p-8 text-center text-[var(--muted-foreground)]">
+                            No members yet
                         </div>
-                    ))}
+                    ) : (
+                        members.map((member) => (
+                            <div key={member.userId} className="p-4 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 flex items-center justify-center border-2 border-[var(--border)] font-bold ${member.isBanned ? "bg-red-100" : "bg-[var(--muted)]"}`}>
+                                        {member.displayName?.charAt(0) || member.email?.charAt(0) || "?"}
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold flex items-center gap-2">
+                                            {member.displayName || member.email || "Unknown"}
+                                            {member.isBanned && (
+                                                <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 border border-red-300">BANNED</span>
+                                            )}
+                                        </div>
+                                        <div className="text-xs text-[var(--muted-foreground)]">
+                                            {member.role || 'member'}{member.currentStreak ? ` • ${member.currentStreak} week streak` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                                {member.role !== "owner" && (
+                                    <button
+                                        onClick={() => handleBan(member.userId, !member.isBanned)}
+                                        disabled={processing === member.userId}
+                                        className={`btn-brutalist px-3 py-2 text-sm font-bold flex items-center gap-1 ${member.isBanned ? "bg-green-500 text-white" : "bg-red-500 text-white"
+                                            }`}
+                                    >
+                                        {processing === member.userId ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : member.isBanned ? (
+                                            <>
+                                                <UserCheck className="w-4 h-4" />
+                                                Unban
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Ban className="w-4 h-4" />
+                                                Ban
+                                            </>
+                                        )}
+                                    </button>
+                                )}
+                            </div>
+                        ))
+                    )}
                 </motion.div>
             )}
 
@@ -340,28 +360,29 @@ export default function TrackAdminPage() {
                         <div className="space-y-4">
                             <div>
                                 <span className="text-sm text-[var(--muted-foreground)]">From:</span>
-                                <p className="font-semibold">{viewSubmission.user?.name || viewSubmission.user?.email}</p>
+                                <p className="font-semibold">{viewSubmission.user?.displayName || viewSubmission.user?.email || 'Unknown'}</p>
                             </div>
                             <div>
-                                <span className="text-sm text-[var(--muted-foreground)]">Week:</span>
-                                <p className="font-semibold">{viewSubmission.week}</p>
+                                <span className="text-sm text-[var(--muted-foreground)]">Submitted:</span>
+                                <p className="font-semibold">{viewSubmission.weekStart ? new Date(viewSubmission.weekStart).toLocaleDateString() : 'Pending'}</p>
                             </div>
                             <div>
-                                <span className="text-sm text-[var(--muted-foreground)]">Content:</span>
-                                {viewSubmission.type === "image" && viewSubmission.imageUrl && (
-                                    <img src={viewSubmission.imageUrl} alt="Submission" className="mt-2 max-w-full border-3 border-[var(--border)]" />
+                                <span className="text-sm text-[var(--muted-foreground)]">Description:</span>
+                                <p className="mt-2 p-4 bg-[var(--muted)] border-3 border-[var(--border)]">{viewSubmission.description || 'No description'}</p>
+                            </div>
+                            <div>
+                                <span className="text-sm text-[var(--muted-foreground)]">Proof:</span>
+                                {viewSubmission.proofType === "image" && viewSubmission.proofUrl && (
+                                    <img src={viewSubmission.proofUrl} alt="Submission" className="mt-2 max-w-full border-3 border-[var(--border)]" />
                                 )}
-                                {viewSubmission.type === "text" && (
-                                    <p className="mt-2 p-4 bg-[var(--muted)] border-3 border-[var(--border)]">{viewSubmission.content}</p>
-                                )}
-                                {viewSubmission.type === "link" && (
+                                {viewSubmission.proofType === "link" && viewSubmission.proofUrl && (
                                     <a
-                                        href={viewSubmission.content}
+                                        href={viewSubmission.proofUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="mt-2 text-[var(--accent)] hover:underline flex items-center gap-1"
+                                        className="mt-2 text-[var(--accent)] hover:underline flex items-center gap-1 block"
                                     >
-                                        {viewSubmission.content}
+                                        {viewSubmission.proofUrl}
                                         <ExternalLink className="w-4 h-4" />
                                     </a>
                                 )}

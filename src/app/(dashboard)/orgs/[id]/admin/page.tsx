@@ -26,12 +26,10 @@ interface Track {
 interface Member {
     id: string;
     oderId: string;
-    user: {
-        _id: string;
-        name?: string;
-        email?: string;
-        displayName?: string;
-    };
+    userId: string;
+    displayName?: string;
+    email?: string;
+    avatarUrl?: string;
     role: string;
     status: string;
     currentStreak: number;
@@ -84,23 +82,25 @@ export default function CommunityAdminPage() {
                 const orgRes = await fetch(`${apiUrl}/api/organizations/${orgId}`, { headers });
                 if (orgRes.ok) {
                     const orgData = await orgRes.json();
-                    setOrgName(orgData.organization?.name || "Community");
+                    setOrgName(orgData.data?.name || orgData.organization?.name || "Community");
                 }
 
                 // Fetch tracks
                 const tracksRes = await fetch(`${apiUrl}/api/tracks/org/${orgId}`, { headers });
                 if (tracksRes.ok) {
                     const tracksData = await tracksRes.json();
-                    setTracks(tracksData.data || []);
+                    const tracksList = tracksData.data || [];
+                    setTracks(tracksList);
 
                     // Fetch members from all tracks
                     const membersMap = new Map<string, Member>();
-                    for (const track of tracksData.data || []) {
-                        const membersRes = await fetch(`${apiUrl}/api/tracks/${track.id}/members`, { headers });
+                    for (const track of tracksList) {
+                        const membersRes = await fetch(`${apiUrl}/api/tracks/${track.id || track._id}/members`, { headers });
                         if (membersRes.ok) {
                             const membersData = await membersRes.json();
-                            (membersData.members || []).forEach((m: any) => {
-                                const key = `${m.userId}-${track.id}`;
+                            const membersList = membersData.data || membersData.members || [];
+                            membersList.forEach((m: any) => {
+                                const key = `${m.userId}-${track.id || track._id}`;
                                 membersMap.set(key, {
                                     ...m,
                                     trackName: track.name,
@@ -129,9 +129,8 @@ export default function CommunityAdminPage() {
             const query = searchQuery.toLowerCase();
             result = result.filter(
                 (m) =>
-                    m.user?.displayName?.toLowerCase().includes(query) ||
-                    m.user?.email?.toLowerCase().includes(query) ||
-                    m.user?.name?.toLowerCase().includes(query)
+                    m.displayName?.toLowerCase().includes(query) ||
+                    m.email?.toLowerCase().includes(query)
             );
         }
 
@@ -281,23 +280,23 @@ export default function CommunityAdminPage() {
                 ) : (
                     filteredMembers.map((member) => (
                         <motion.div
-                            key={`${member.user?._id}-${member.trackName}`}
+                            key={`${member.userId}-${member.trackName}`}
                             variants={itemVariants}
                             className={`card-brutalist p-4 flex items-center justify-between ${member.status === "banned" ? "bg-red-50" :
-                                    member.status === "suspended" ? "bg-yellow-50" : ""
+                                member.status === "suspended" ? "bg-yellow-50" : ""
                                 }`}
                         >
                             <div className="flex items-center gap-3">
                                 <div className={`w-10 h-10 flex items-center justify-center border-2 border-[var(--border)] font-bold ${member.status !== "active" ? "bg-red-100" : "bg-[var(--muted)]"
                                     }`}>
-                                    {member.user?.displayName?.charAt(0) || member.user?.email?.charAt(0) || "?"}
+                                    {member.displayName?.charAt(0) || member.email?.charAt(0) || "?"}
                                 </div>
                                 <div>
                                     <div className="font-semibold flex items-center gap-2">
-                                        {member.user?.displayName || member.user?.email || "Unknown"}
-                                        {member.status !== "active" && (
+                                        {member.displayName || member.email || "Unknown"}
+                                        {member.status && member.status !== "active" && (
                                             <span className={`text-xs px-2 py-0.5 border ${member.status === "banned" ? "bg-red-100 text-red-800 border-red-300" :
-                                                    "bg-yellow-100 text-yellow-800 border-yellow-300"
+                                                "bg-yellow-100 text-yellow-800 border-yellow-300"
                                                 }`}>
                                                 {member.status.toUpperCase()}
                                             </span>
@@ -312,24 +311,24 @@ export default function CommunityAdminPage() {
                                 {member.status === "active" && (
                                     <>
                                         <button
-                                            onClick={() => handleAction(member.user._id, member.id, "suspend")}
+                                            onClick={() => handleAction(member.userId, member.id, "suspend")}
                                             disabled={processing !== null}
                                             className="btn-brutalist p-2 bg-yellow-500 text-white text-xs"
                                             title="Suspend"
                                         >
-                                            {processing === `${member.user._id}-suspend` ? (
+                                            {processing === `${member.userId}-suspend` ? (
                                                 <Loader2 className="w-4 h-4 animate-spin" />
                                             ) : (
                                                 <UserX className="w-4 h-4" />
                                             )}
                                         </button>
                                         <button
-                                            onClick={() => handleAction(member.user._id, member.id, "ban")}
+                                            onClick={() => handleAction(member.userId, member.id, "ban")}
                                             disabled={processing !== null}
                                             className="btn-brutalist p-2 bg-red-500 text-white text-xs"
                                             title="Ban"
                                         >
-                                            {processing === `${member.user._id}-ban` ? (
+                                            {processing === `${member.userId}-ban` ? (
                                                 <Loader2 className="w-4 h-4 animate-spin" />
                                             ) : (
                                                 <Ban className="w-4 h-4" />
@@ -339,12 +338,12 @@ export default function CommunityAdminPage() {
                                 )}
                                 {member.status === "suspended" && (
                                     <button
-                                        onClick={() => handleAction(member.user._id, member.id, "unsuspend")}
+                                        onClick={() => handleAction(member.userId, member.id, "unsuspend")}
                                         disabled={processing !== null}
                                         className="btn-brutalist p-2 bg-green-500 text-white text-xs"
                                         title="Unsuspend"
                                     >
-                                        {processing === `${member.user._id}-unsuspend` ? (
+                                        {processing === `${member.userId}-unsuspend` ? (
                                             <Loader2 className="w-4 h-4 animate-spin" />
                                         ) : (
                                             <UserCheck className="w-4 h-4" />
@@ -353,12 +352,12 @@ export default function CommunityAdminPage() {
                                 )}
                                 {member.status === "banned" && (
                                     <button
-                                        onClick={() => handleAction(member.user._id, member.id, "unban")}
+                                        onClick={() => handleAction(member.userId, member.id, "unban")}
                                         disabled={processing !== null}
                                         className="btn-brutalist p-2 bg-green-500 text-white text-xs"
                                         title="Unban"
                                     >
-                                        {processing === `${member.user._id}-unban` ? (
+                                        {processing === `${member.userId}-unban` ? (
                                             <Loader2 className="w-4 h-4 animate-spin" />
                                         ) : (
                                             <UserCheck className="w-4 h-4" />

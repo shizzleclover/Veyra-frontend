@@ -51,7 +51,7 @@
   --popover-foreground: rgb(255, 255, 255);
   --primary: rgb(255, 102, 102);
   --primary-foreground: rgb(0, 0, 0);
-  --secondary: rgb(255, 255, 51);
+  --secondary: rgb(212, 175, 55);
   --secondary-foreground: rgb(0, 0, 0);
   --muted: rgb(26, 26, 26);
   --muted-foreground: rgb(204, 204, 204);
@@ -63,7 +63,7 @@
   --input: rgb(255, 255, 255);
   --ring: rgb(255, 102, 102);
   --chart-1: rgb(255, 102, 102);
-  --chart-2: rgb(255, 255, 51);
+  --chart-2: rgb(212, 175, 55);
   --chart-3: rgb(51, 153, 255);
   --chart-4: rgb(51, 204, 51);
   --chart-5: rgb(204, 51, 204);

@@ -32,6 +32,7 @@ interface Track {
         name: string;
     };
     currentWeek?: number;
+    role?: string;
 }
 
 interface LeaderboardEntry {
@@ -86,6 +87,7 @@ export default function TrackDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<"leaderboard" | "submissions">("leaderboard");
+    const [userRole, setUserRole] = useState<string>("member");
 
     const fetchTrackData = async () => {
         try {
@@ -97,7 +99,12 @@ export default function TrackDetailPage() {
             const trackRes = await fetch(`${apiUrl}/api/tracks/${trackId}`, { headers });
             if (!trackRes.ok) throw new Error("Failed to fetch track");
             const trackData = await trackRes.json();
-            setTrack(trackData.data || trackData.track);
+            const trackInfo = trackData.data || trackData.track;
+            setTrack(trackInfo);
+            // Set user's role in this track
+            if (trackInfo?.role) {
+                setUserRole(trackInfo.role);
+            }
 
             // Fetch leaderboard - correct route is /api/leaderboard/track/:trackId
             const leaderboardRes = await fetch(`${apiUrl}/api/leaderboard/track/${trackId}`, { headers });
@@ -220,20 +227,24 @@ export default function TrackDetailPage() {
                     <BarChart2 className="w-4 h-4" />
                     Full Leaderboard
                 </Link>
-                <Link
-                    href={`/tracks/${trackId}/admin`}
-                    className="btn-brutalist px-4 py-2 bg-[var(--muted)] font-bold flex items-center gap-2"
-                >
-                    <Shield className="w-4 h-4" />
-                    Admin Panel
-                </Link>
-                <Link
-                    href={`/tracks/${trackId}/settings`}
-                    className="btn-brutalist px-4 py-2 bg-[var(--muted)] font-bold flex items-center gap-2"
-                >
-                    <Settings className="w-4 h-4" />
-                    Settings
-                </Link>
+                {(userRole === "owner" || userRole === "admin") && (
+                    <>
+                        <Link
+                            href={`/tracks/${trackId}/admin`}
+                            className="btn-brutalist px-4 py-2 bg-[var(--muted)] font-bold flex items-center gap-2"
+                        >
+                            <Shield className="w-4 h-4" />
+                            Admin Panel
+                        </Link>
+                        <Link
+                            href={`/tracks/${trackId}/settings`}
+                            className="btn-brutalist px-4 py-2 bg-[var(--muted)] font-bold flex items-center gap-2"
+                        >
+                            <Settings className="w-4 h-4" />
+                            Settings
+                        </Link>
+                    </>
+                )}
             </motion.div>
 
             {error && (

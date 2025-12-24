@@ -65,9 +65,10 @@ export default function GlobalLeaderboardPage() {
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    setTracks(data.tracks || []);
-                    if (data.tracks?.length > 0) {
-                        setSelectedTrack(data.tracks[0]);
+                    const tracksList = data.data?.tracks || data.tracks || [];
+                    setTracks(tracksList);
+                    if (tracksList.length > 0) {
+                        setSelectedTrack(tracksList[0]);
                     }
                 }
             } catch (err) {
@@ -90,7 +91,7 @@ export default function GlobalLeaderboardPage() {
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    setLeaderboard(data.leaderboard || []);
+                    setLeaderboard(data.data?.leaderboard || data.leaderboard || []);
                 }
             } catch (err) {
                 console.error("Failed to fetch leaderboard:", err);

@@ -13,6 +13,7 @@ import {
     Trophy,
     Menu,
     X,
+    Flame,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -35,6 +36,7 @@ export default function DashboardLayout({
     const { getToken, isLoaded, userId } = useAuth();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [checking, setChecking] = useState(true);
+    const [bestStreak, setBestStreak] = useState(0);
 
     useEffect(() => {
         const checkMembership = async () => {
@@ -51,6 +53,19 @@ export default function DashboardLayout({
                     if (Array.isArray(data.data) && data.data.length === 0) {
                         router.push("/onboarding");
                         return;
+                    }
+                }
+
+                // Fetch user's tracks to get streak
+                const tracksRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tracks/my-tracks`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (tracksRes.ok) {
+                    const tracksData = await tracksRes.json();
+                    const tracks = tracksData.data?.tracks || tracksData.tracks || [];
+                    if (Array.isArray(tracks) && tracks.length > 0) {
+                        const maxStreak = Math.max(...tracks.map((t: any) => t.currentStreak || 0));
+                        setBestStreak(maxStreak);
                     }
                 }
             } catch (err) {
@@ -166,6 +181,11 @@ export default function DashboardLayout({
                         <div className="flex-1" />
 
                         <div className="flex items-center gap-4">
+                            {/* Streak Display */}
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 border-2 border-orange-500/30 font-bold text-orange-500">
+                                <Flame className="w-4 h-4" />
+                                <span className="text-sm">{bestStreak} day streak</span>
+                            </div>
                             <ThemeToggle />
                             <div className="hidden lg:block">
                                 <UserButton

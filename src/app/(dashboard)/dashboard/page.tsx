@@ -13,6 +13,7 @@ import {
     ArrowRight,
     TrendingUp,
     Loader2,
+    UserPlus,
 } from "lucide-react";
 import { CheckInButton } from "@/components/CheckInButton";
 
@@ -76,21 +77,22 @@ export default function DashboardPage() {
 
                 // Fetch organizations count
                 const orgsRes = await fetch(`${apiUrl}/api/organizations`, { headers });
-                const orgsData = orgsRes.ok ? await orgsRes.json() : { organizations: [] };
+                const orgsData = orgsRes.ok ? await orgsRes.json() : { data: [] };
+                const organizations = orgsData.data || orgsData.organizations || [];
 
                 // Fetch my tracks
                 const tracksRes = await fetch(`${apiUrl}/api/tracks/my-tracks`, { headers });
-                const tracksData = tracksRes.ok ? await tracksRes.json() : { tracks: [] };
+                const tracksData = tracksRes.ok ? await tracksRes.json() : { data: { tracks: [] } };
 
                 // Calculate max streak from tracks
                 let maxStreak = 0;
-                const tracks = tracksData.tracks || [];
+                const tracks = tracksData.data?.tracks || tracksData.tracks || [];
                 tracks.forEach((t: any) => {
                     if (t.currentStreak > maxStreak) maxStreak = t.currentStreak;
                 });
 
                 setStats({
-                    communityCount: orgsData.organizations?.length || 0,
+                    communityCount: organizations.length,
                     trackCount: tracks.length,
                     maxStreak: maxStreak,
                     submissionsThisWeek: 0,
@@ -152,6 +154,12 @@ export default function DashboardPage() {
             icon: Building2,
             href: "/orgs",
             color: "var(--primary)",
+        },
+        {
+            label: "Join Community",
+            icon: UserPlus,
+            href: "/orgs",
+            color: "var(--chart-4)",
         },
         {
             label: "View Leaderboards",

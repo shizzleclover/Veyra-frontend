@@ -16,6 +16,7 @@ import {
     Settings,
     UserPlus,
     Flame,
+    LogOut,
 } from "lucide-react";
 
 interface Organization {
@@ -23,24 +24,28 @@ interface Organization {
     name: string;
     description?: string;
     createdAt: string;
+    role?: string;
 }
 
 interface Track {
-    id: string;
+    id?: string;
+    _id?: string;
     name: string;
     description?: string;
     memberCount?: number;
     weekNumber?: number;
+    isMember?: boolean;
 }
 
 interface Member {
-    id: string;
+    id?: string;
+    _id?: string;
     userId: string;
-    user: {
-        name?: string;
-        email?: string;
-    };
+    displayName?: string;
+    email?: string;
+    avatarUrl?: string;
     role: string;
+    joinedAt?: string;
 }
 
 const containerVariants = {
@@ -77,12 +82,17 @@ export default function OrganizationDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<"tracks" | "members">("tracks");
+    const [userRole, setUserRole] = useState<string>("member");
 
     // Create track modal
     const [showCreateTrack, setShowCreateTrack] = useState(false);
     const [newTrackName, setNewTrackName] = useState("");
     const [newTrackDesc, setNewTrackDesc] = useState("");
     const [creating, setCreating] = useState(false);
+
+    // Leave and join states
+    const [leaving, setLeaving] = useState(false);
+    const [joiningTrack, setJoiningTrack] = useState<string | null>(null);
 
     const fetchOrgData = async () => {
         try {
@@ -94,22 +104,34 @@ export default function OrganizationDetailPage() {
             const orgRes = await fetch(`${apiUrl}/api/organizations/${orgId}`, { headers });
             if (!orgRes.ok) throw new Error("Failed to fetch organization");
             const orgData = await orgRes.json();
-            setOrg(orgData.data || orgData.organization);
+            const orgInfo = orgData.data || orgData.organization;
+            setOrg(orgInfo);
+            // Set user's role in this organization
+            if (orgInfo?.role) {
+                setUserRole(orgInfo.role);
+            }
 
             // Fetch tracks
             const tracksRes = await fetch(`${apiUrl}/api/tracks/org/${orgId}`, { headers });
             if (tracksRes.ok) {
                 const tracksData = await tracksRes.json();
-                setTracks(tracksData.data || []);
+                setTracks(tracksData.data || tracksData || []);
             }
 
             // Fetch members
             const membersRes = await fetch(`${apiUrl}/api/organizations/${orgId}/members`, { headers });
+            console.log('Members API response status:', membersRes.status);
             if (membersRes.ok) {
                 const membersData = await membersRes.json();
-                setMembers(membersData.members || []);
+                console.log('Members API response data:', membersData);
+                const membersList = membersData.data || membersData.members || membersData || [];
+                console.log('Setting members to:', membersList);
+                setMembers(Array.isArray(membersList) ? membersList : []);
+            } else {
+                console.error('Members API error:', await membersRes.text());
             }
         } catch (err) {
+            console.error('fetchOrgData error:', err);
             setError(err instanceof Error ? err.message : "An error occurred");
         } finally {
             setLoading(false);
@@ -149,6 +171,58 @@ export default function OrganizationDetailPage() {
             setError(err instanceof Error ? err.message : "Failed to create track");
         } finally {
             setCreating(false);
+        }
+    };
+
+    const handleLeaveCommunity = async () => {
+        if (!confirm("Are you sure you want to leave this community? You'll need an invite code to rejoin.")) return;
+
+        setLeaving(true);
+        try {
+            const token = await getToken();
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/organizations/${orgId}/leave`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to leave community");
+            }
+
+            router.push("/orgs");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to leave community");
+        } finally {
+            setLeaving(false);
+        }
+    };
+
+    const handleJoinTrack = async (trackId: string) => {
+        setJoiningTrack(trackId);
+        try {
+            const token = await getToken();
+            // First get the track's invite code (for admins) or use direct join
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tracks/${trackId}/join`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({}),
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to join track");
+            }
+
+            // Refresh to show updated membership status
+            fetchOrgData();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to join track");
+        } finally {
+            setJoiningTrack(null);
         }
     };
 
@@ -225,20 +299,34 @@ export default function OrganizationDetailPage() {
                     <Trophy className="w-4 h-4" />
                     Community Leaderboard
                 </Link>
-                <Link
-                    href={`/orgs/${orgId}/admin`}
-                    className="btn-brutalist px-4 py-2 bg-[var(--muted)] font-bold flex items-center gap-2"
-                >
-                    <Settings className="w-4 h-4" />
-                    Admin Panel
-                </Link>
-                <Link
-                    href={`/orgs/${orgId}/settings`}
-                    className="btn-brutalist px-4 py-2 bg-[var(--muted)] font-bold flex items-center gap-2"
-                >
-                    <Settings className="w-4 h-4" />
-                    Settings
-                </Link>
+                {(userRole === "owner" || userRole === "admin") && (
+                    <>
+                        <Link
+                            href={`/orgs/${orgId}/admin`}
+                            className="btn-brutalist px-4 py-2 bg-[var(--muted)] font-bold flex items-center gap-2"
+                        >
+                            <Settings className="w-4 h-4" />
+                            Admin Panel
+                        </Link>
+                        <Link
+                            href={`/orgs/${orgId}/settings`}
+                            className="btn-brutalist px-4 py-2 bg-[var(--muted)] font-bold flex items-center gap-2"
+                        >
+                            <Settings className="w-4 h-4" />
+                            Settings
+                        </Link>
+                    </>
+                )}
+                {userRole !== "owner" && (
+                    <button
+                        onClick={handleLeaveCommunity}
+                        disabled={leaving}
+                        className="btn-brutalist px-4 py-2 bg-red-500/10 text-red-500 border-red-500 font-bold flex items-center gap-2 hover:bg-red-500/20"
+                    >
+                        {leaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+                        Leave Community
+                    </button>
+                )}
             </motion.div>
 
             {error && (
@@ -272,13 +360,15 @@ export default function OrganizationDetailPage() {
                 <motion.div variants={containerVariants} className="space-y-4">
                     <div className="flex justify-between items-center">
                         <h2 className="text-xl font-bold">Tracks</h2>
-                        <button
-                            onClick={() => setShowCreateTrack(true)}
-                            className="btn-brutalist px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] font-bold flex items-center gap-2"
-                        >
-                            <Plus className="w-4 h-4" />
-                            New Track
-                        </button>
+                        {(userRole === "owner" || userRole === "admin") && (
+                            <button
+                                onClick={() => setShowCreateTrack(true)}
+                                className="btn-brutalist px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] font-bold flex items-center gap-2"
+                            >
+                                <Plus className="w-4 h-4" />
+                                New Track
+                            </button>
+                        )}
                     </div>
 
                     {tracks.length === 0 ? (
@@ -289,15 +379,24 @@ export default function OrganizationDetailPage() {
                         </motion.div>
                     ) : (
                         <div className="grid md:grid-cols-2 gap-4">
-                            {tracks.map((track) => (
-                                <motion.div key={track.id} variants={itemVariants}>
-                                    <Link href={`/tracks/${track.id}`}>
-                                        <div className="card-brutalist p-6 group cursor-pointer">
+                            {tracks.map((track, index) => {
+                                const trackId = track.id || track._id;
+                                return (
+                                    <motion.div key={trackId || index} variants={itemVariants}>
+                                        <div className="card-brutalist p-6">
                                             <div className="flex items-start justify-between mb-3">
                                                 <div className="w-10 h-10 flex items-center justify-center bg-[var(--secondary)] border-2 border-[var(--border)]">
                                                     <Trophy className="w-5 h-5" />
                                                 </div>
-                                                <ArrowRight className="w-5 h-5 text-[var(--muted-foreground)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                {track.isMember ? (
+                                                    <span className="px-2 py-1 text-xs font-bold bg-green-500/10 text-green-500 border border-green-500">
+                                                        Joined
+                                                    </span>
+                                                ) : (
+                                                    <span className="px-2 py-1 text-xs font-bold bg-[var(--muted)] text-[var(--muted-foreground)]">
+                                                        Not Joined
+                                                    </span>
+                                                )}
                                             </div>
                                             <h3 className="text-lg font-bold mb-1">{track.name}</h3>
                                             {track.description && (
@@ -306,17 +405,37 @@ export default function OrganizationDetailPage() {
                                             <div className="flex items-center gap-4 mt-3 text-xs text-[var(--muted-foreground)]">
                                                 <span className="flex items-center gap-1">
                                                     <Users className="w-3 h-3" />
-                                                    {track.memberCount || 0}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Flame className="w-3 h-3" />
-                                                    Week {track.weekNumber || 1}
+                                                    {track.memberCount || 0} members
                                                 </span>
                                             </div>
+                                            <div className="mt-4 flex gap-2">
+                                                {track.isMember ? (
+                                                    <Link
+                                                        href={`/tracks/${trackId}`}
+                                                        className="btn-brutalist flex-1 px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] font-bold flex items-center justify-center gap-2"
+                                                    >
+                                                        <ArrowRight className="w-4 h-4" />
+                                                        View Track
+                                                    </Link>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleJoinTrack(trackId!)}
+                                                        disabled={joiningTrack === trackId}
+                                                        className="btn-brutalist flex-1 px-4 py-2 bg-[var(--accent)] text-white font-bold flex items-center justify-center gap-2"
+                                                    >
+                                                        {joiningTrack === trackId ? (
+                                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                                        ) : (
+                                                            <Plus className="w-4 h-4" />
+                                                        )}
+                                                        Join Track
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
-                                    </Link>
-                                </motion.div>
-                            ))}
+                                    </motion.div>
+                                );
+                            })}
                         </div>
                     )}
                 </motion.div>
@@ -341,15 +460,15 @@ export default function OrganizationDetailPage() {
                         </motion.div>
                     ) : (
                         <div className="card-brutalist divide-y divide-[var(--border)]">
-                            {members.map((member) => (
-                                <div key={member.id} className="p-4 flex items-center justify-between">
+                            {members.map((member, index) => (
+                                <div key={member.id || member._id || index} className="p-4 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 flex items-center justify-center bg-[var(--muted)] border-2 border-[var(--border)] font-bold">
-                                            {member.user?.name?.charAt(0) || member.user?.email?.charAt(0) || "?"}
+                                            {member.displayName?.charAt(0) || member.email?.charAt(0) || "?"}
                                         </div>
                                         <div>
-                                            <div className="font-semibold">{member.user?.name || member.user?.email || "Unknown"}</div>
-                                            <div className="text-xs text-[var(--muted-foreground)]">{member.role}</div>
+                                            <div className="font-semibold">{member.displayName || member.email || "Unknown"}</div>
+                                            <div className="text-xs text-[var(--muted-foreground)]">{member.email}</div>
                                         </div>
                                     </div>
                                     <span className={`px-3 py-1 text-xs font-bold border-2 border-[var(--border)] ${member.role === "owner" ? "bg-[var(--primary)] text-white" :
